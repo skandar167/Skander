@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime
 
 st.set_page_config(
     page_title="Sélection de l'Industrie",
@@ -50,8 +52,25 @@ st.markdown("""
         border-left: 5px solid #0066cc;
         animation: fadeIn 1s ease-in;
     }
+
+    .form-container {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        animation: fadeIn 0.5s ease-out;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# Initialize session state for custom industries and their details
+if 'custom_industries' not in st.session_state:
+    st.session_state.custom_industries = {
+        'Pétrole et Gaz': {},
+        'Agroalimentaire': {},
+        'Pharmaceutique': {}
+    }
 
 # Titre principal
 st.markdown('<h1 class="main-title">🏭 Plateforme d\'Optimisation Industrielle IA</h1>', unsafe_allow_html=True)
@@ -119,3 +138,50 @@ with col3:
     if st.button("Sélectionner Pharmaceutique"):
         st.session_state['industry_type'] = 'pharma'
         st.switch_page("pages/main_dashboard.py")
+
+# Add new unit
+st.markdown("### Ajouter une Nouvelle Unité")
+with st.expander("Cliquez pour ajouter une nouvelle unité"):
+    selected_industry_type = st.selectbox(
+        "Type d'Industrie",
+        ["Pétrole et Gaz", "Agroalimentaire", "Pharmaceutique"]
+    )
+
+    with st.form("new_unit_form"):
+        new_unit_name = st.text_input("Nom de l'unité")
+        new_unit_address = st.text_input("Adresse")
+        new_unit_capacity = st.number_input("Capacité de production (tonnes/jour)", min_value=0.0)
+        new_unit_employees = st.number_input("Nombre d'employés", min_value=0)
+        new_unit_certification = st.multiselect(
+            "Certifications",
+            ["ISO 9001", "ISO 14001", "OHSAS 18001", "GMP", "HACCP"]
+        )
+        new_unit_description = st.text_area("Description de l'unité")
+
+        submitted = st.form_submit_button("Ajouter l'unité")
+        if submitted and new_unit_name:
+            # Save unit details
+            st.session_state.custom_industries[selected_industry_type][new_unit_name] = {
+                'address': new_unit_address,
+                'capacity': new_unit_capacity,
+                'employees': new_unit_employees,
+                'certifications': new_unit_certification,
+                'description': new_unit_description,
+                'date_added': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            st.success(f"Unité '{new_unit_name}' ajoutée avec succès!")
+
+# Display existing custom units
+if any(units for units in st.session_state.custom_industries.values()):
+    st.markdown("### Unités Personnalisées")
+    for industry, units in st.session_state.custom_industries.items():
+        if units:
+            st.subheader(industry)
+            for unit_name, details in units.items():
+                with st.expander(f"{unit_name}"):
+                    st.write(f"**Adresse:** {details['address']}")
+                    st.write(f"**Capacité:** {details['capacity']} tonnes/jour")
+                    st.write(f"**Employés:** {details['employees']}")
+                    st.write(f"**Certifications:** {', '.join(details['certifications'])}")
+                    st.write(f"**Description:** {details['description']}")
+                    st.write(f"**Date d'ajout:** {details['date_added']}")

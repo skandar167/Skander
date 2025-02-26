@@ -6,29 +6,39 @@ import io
 
 st.set_page_config(page_title="Analyse des Besoins", page_icon="📊")
 
-# Initialize session state for custom industries
+# Initialize session state for custom industries if not already done in home.py
 if 'custom_industries' not in st.session_state:
     st.session_state.custom_industries = {
-        'Pétrole et Gaz': [],
-        'Agroalimentaire': [],
-        'Pharmaceutique': []
+        'Pétrole et Gaz': {},
+        'Agroalimentaire': {},
+        'Pharmaceutique': {}
     }
 
-def save_configuration():
+def save_configuration(selected_industry, selected_unit, selected_needs, selected_sources, selected_frequency, selected_kpis):
     """Sauvegarder la configuration actuelle"""
     config_data = {
         'industry_type': selected_industry,
         'unit': selected_unit,
-        'needs': selected_needs,
-        'data_sources': selected_sources,
+        'needs': ', '.join(selected_needs),
+        'data_sources': ', '.join(selected_sources),
         'frequency': selected_frequency,
-        'kpis': selected_kpis,
+        'kpis': ', '.join(selected_kpis),
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
     # Convert to DataFrame for export
     df = pd.DataFrame([config_data])
     return df
+
+def add_new_unit(industry_type, unit_name, unit_details):
+    """Ajouter une nouvelle unité avec ses détails"""
+    if industry_type not in st.session_state.custom_industries:
+        st.session_state.custom_industries[industry_type] = {}
+
+    st.session_state.custom_industries[industry_type][unit_name] = {
+        **unit_details,
+        'date_added': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
 
 def render_analyse_besoins():
     st.title("📊 Analyse des Besoins et Collecte des Données")
@@ -43,33 +53,59 @@ def render_analyse_besoins():
         )
 
     with col2:
-        # Existing units based on industry
-        industry_units = {
-            "Pétrole et Gaz": ["Raffinerie Skikda", "Terminal GNL Arzew", "Hassi R'Mel"] + st.session_state.custom_industries["Pétrole et Gaz"],
-            "Agroalimentaire": ["Cevital Béjaïa", "Groupe Amor Benamor", "Candia Algérie"] + st.session_state.custom_industries["Agroalimentaire"],
-            "Pharmaceutique": ["Saidal Constantine", "Biopharm", "LPA Production"] + st.session_state.custom_industries["Pharmaceutique"]
+        # Combine default and custom units
+        default_units = {
+            "Pétrole et Gaz": ["Raffinerie Skikda", "Terminal GNL Arzew", "Hassi R'Mel"],
+            "Agroalimentaire": ["Cevital Béjaïa", "Groupe Amor Benamor", "Candia Algérie"],
+            "Pharmaceutique": ["Saidal Constantine", "Biopharm", "LPA Production"]
         }
+
+        custom_units = list(st.session_state.custom_industries.get(selected_industry, {}).keys())
+        all_units = default_units[selected_industry] + custom_units
 
         selected_unit = st.selectbox(
             "Unité Industrielle",
-            industry_units[selected_industry]
+            all_units
         )
 
-        # Add new unit
-        new_unit = st.text_input("Ajouter une nouvelle unité")
-        if st.button("Ajouter") and new_unit:
-            if new_unit not in st.session_state.custom_industries[selected_industry]:
-                st.session_state.custom_industries[selected_industry].append(new_unit)
-                st.success(f"Unité '{new_unit}' ajoutée avec succès!")
+    # Add new unit
+    with st.expander("Ajouter une nouvelle unité"):
+        with st.form("new_unit_form"):
+            new_unit_name = st.text_input("Nom de l'unité")
+            new_unit_address = st.text_input("Adresse")
+            new_unit_capacity = st.number_input("Capacité de production (tonnes/jour)", min_value=0.0)
+            new_unit_employees = st.number_input("Nombre d'employés", min_value=0)
+            new_unit_certification = st.multiselect(
+                "Certifications",
+                ["ISO 9001", "ISO 14001", "OHSAS 18001", "GMP", "HACCP"]
+            )
+            new_unit_description = st.text_area("Description de l'unité")
+
+            submitted = st.form_submit_button("Ajouter l'unité")
+            if submitted and new_unit_name:
+                unit_details = {
+                    'address': new_unit_address,
+                    'capacity': new_unit_capacity,
+                    'employees': new_unit_employees,
+                    'certifications': new_unit_certification,
+                    'description': new_unit_description
+                }
+                add_new_unit(selected_industry, new_unit_name, unit_details)
+                st.success(f"Unité '{new_unit_name}' ajoutée avec succès!")
                 st.rerun()
 
-    # Tabs for different analysis aspects
+    # Rest of the analysis tabs
     tab1, tab2, tab3, tab4 = st.tabs([
         "Identification des Besoins",
         "Collecte des Données",
         "Contraintes",
         "KPIs"
     ])
+
+    selected_needs = []
+    selected_sources = []
+    selected_frequency = None
+    selected_kpis = []
 
     with tab1:
         st.subheader("Identification des Besoins")
@@ -96,7 +132,6 @@ def render_analyse_besoins():
             ]
         }
 
-        selected_needs = []
         for need in needs[selected_industry]:
             if st.checkbox(need, key=f"need_{need}"):
                 selected_needs.append(need)
@@ -114,7 +149,6 @@ def render_analyse_besoins():
                 "Rapports de maintenance",
                 "Données de qualité"
             ]
-            selected_sources = []
             for source in data_sources:
                 if st.checkbox(source, key=f"source_{source}"):
                     selected_sources.append(source)
@@ -154,7 +188,6 @@ def render_analyse_besoins():
             "Coûts": ["Coût unitaire", "Coût énergétique"]
         }
 
-        selected_kpis = []
         for category, kpis in kpi_categories.items():
             st.write(f"**{category}**")
             for kpi in kpis:
@@ -164,7 +197,14 @@ def render_analyse_besoins():
     # Save configuration
     st.subheader("Sauvegarder la Configuration")
     if st.button("💾 Sauvegarder les modifications"):
-        config_df = save_configuration()
+        config_df = save_configuration(
+            selected_industry,
+            selected_unit,
+            selected_needs,
+            selected_sources,
+            selected_frequency,
+            selected_kpis
+        )
 
         # Export options
         col1, col2 = st.columns(2)
