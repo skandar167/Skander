@@ -20,8 +20,13 @@ st.markdown("""
 
     /* Animations */
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(0); }
     }
 
     .stButton>button {
@@ -41,10 +46,12 @@ st.markdown("""
         animation: fadeIn 1s ease-in;
     }
 
-    .subtitle {
-        color: #666;
-        font-family: 'Roboto', sans-serif;
-        font-weight: 300;
+    .config-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        animation: slideIn 0.5s ease-out;
     }
 
     .university-info {
@@ -53,13 +60,63 @@ st.markdown("""
         border-radius: 10px;
         margin: 20px 0;
         border-left: 5px solid #0066cc;
+        animation: fadeIn 1s ease-in;
     }
 </style>
 """, unsafe_allow_html=True)
 
+def get_industry_kpis(industry_type):
+    """Retourne les KPIs spécifiques à chaque industrie"""
+    kpis = {
+        "Pétrole et Gaz": {
+            "performance_energetique": ["Efficacité énergétique", "Consommation par baril"],
+            "environnement": ["Émissions CO2", "Gestion des effluents"],
+            "production": ["Taux de récupération", "Qualité du produit"]
+        },
+        "Agroalimentaire": {
+            "qualite": ["Conformité aux normes alimentaires", "Traçabilité"],
+            "production": ["Rendement de production", "Gestion des stocks"],
+            "environnement": ["Consommation d'eau", "Gestion des déchets"]
+        },
+        "Pharmaceutique": {
+            "qualite": ["Conformité GMP", "Pureté du produit"],
+            "production": ["Rendement par lot", "Temps de cycle"],
+            "controle": ["Tests de qualité", "Validation des processus"]
+        }
+    }
+    return kpis.get(industry_type, {})
+
 def main():
     # En-tête avec logo et titre
     st.markdown('<h1 class="main-title">🏭 Plateforme d\'Optimisation Industrielle IA</h1>', unsafe_allow_html=True)
+
+    # Configuration en haut de page
+    st.markdown('<div class="config-section">', unsafe_allow_html=True)
+    config_col1, config_col2 = st.columns(2)
+
+    with config_col1:
+        selected_industry = st.selectbox(
+            "Type d'Industrie",
+            ["Pétrole et Gaz", "Agroalimentaire", "Pharmaceutique"]
+        )
+
+    with config_col2:
+        if selected_industry == "Pétrole et Gaz":
+            selected_unit = st.selectbox(
+                "Unité industrielle",
+                ["Raffinerie Skikda", "Terminal GNL Arzew", "Hassi R'Mel"]
+            )
+        elif selected_industry == "Agroalimentaire":
+            selected_unit = st.selectbox(
+                "Unité industrielle",
+                ["Cevital Béjaïa", "Groupe Amor Benamor", "Candia Algérie"]
+            )
+        else:
+            selected_unit = st.selectbox(
+                "Unité industrielle",
+                ["Saidal Constantine", "Biopharm", "LPA Production"]
+            )
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Information sur l'université
     st.markdown("""
@@ -72,22 +129,16 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-    # Sidebar pour les contrôles globaux
-    st.sidebar.title("Configuration")
-    selected_unit = st.sidebar.selectbox(
-        "Unité industrielle",
-        ["Raffinerie Skikda", "Production Pharmaceutique Constantine"]
-    )
-
     # Main dashboard layout
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("Vue d'ensemble des KPIs")
 
-        # Generate sample data
+        # Generate sample data and get industry-specific KPIs
         current_data = generate_sample_data()
         kpis = calculate_all_kpis(current_data)
+        industry_kpis = get_industry_kpis(selected_industry)
 
         # Create gauge chart for overall efficiency
         fig = go.Figure(go.Indicator(
@@ -133,9 +184,16 @@ def main():
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.info(f"Dernière mise à jour: {current_time}")
 
-        # Sample alerts
-        st.warning("⚠️ Rendement matière en dessous du seuil optimal (85%)")
-        st.success("✅ Consommation énergétique dans les normes")
+        # Sample alerts based on industry
+        if selected_industry == "Pétrole et Gaz":
+            st.warning("⚠️ Pression du système au-dessus du seuil normal")
+            st.success("✅ Qualité du produit conforme aux spécifications")
+        elif selected_industry == "Agroalimentaire":
+            st.warning("⚠️ Température de stockage proche de la limite")
+            st.success("✅ Traçabilité des lots validée")
+        else:
+            st.warning("⚠️ Maintenance préventive requise sur ligne 2")
+            st.success("✅ Tests de qualité conformes aux normes GMP")
 
     # Description des fonctionnalités
     st.markdown("""
@@ -156,13 +214,17 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.button("📊 Analyse des Besoins", key="btn_analyse")
+        if st.button("📊 Analyse des Besoins"):
+            st.switch_page("pages/01_analyse_besoins.py")
     with col2:
-        st.button("🔄 Jumeau Numérique", key="btn_jumeau")
+        if st.button("🔄 Jumeau Numérique"):
+            st.switch_page("pages/02_jumeau_numerique.py")
     with col3:
-        st.button("📈 Monitoring KPI", key="btn_kpi")
+        if st.button("📈 Monitoring KPI"):
+            st.switch_page("pages/03_kpi_monitoring.py")
     with col4:
-        st.button("⚡ Optimisation", key="btn_opti")
+        if st.button("⚡ Optimisation"):
+            st.switch_page("pages/04_optimisation.py")
 
 if __name__ == "__main__":
     main()
